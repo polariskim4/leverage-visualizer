@@ -36,11 +36,11 @@ def get_metrics(ticker_symbol, years, leverage=1):
     daily_returns = data[price_col].pct_change().dropna()
     leveraged_returns = daily_returns * leverage
     
-    # CAGR
+    # CAGR 계산
     cumulative_return = (1 + leveraged_returns).prod()
     cagr = (cumulative_return ** (1 / years)) - 1
     
-    # MDD
+    # MDD 계산
     cum_returns = (1 + leveraged_returns).cumprod()
     peak = cum_returns.cummax()
     drawdown = (cum_returns - peak) / peak
@@ -56,7 +56,7 @@ if target_ticker:
             results = []
             periods = [1, 3, 5, 10]
             
-            # 분석 대상 구성
+            # 분석 리스트 구성
             tickers_to_analyze = []
             for t in benchmarks.keys(): 
                 tickers_to_analyze.append((t, 1, f"{t} (BM)"))
@@ -77,25 +77,33 @@ if target_ticker:
             
             st.subheader(f"📊 {target_ticker} vs 벤치마크 성과 비교")
             
-            # HTML 변환 및 강조 로직
+            # HTML 변환
             html_table = df.to_html(escape=False, index=False)
             
-            # 1. MDD (괄호 안 수치) 빨간색 처리
+            # MDD 빨간색 강조
             html_table = re.sub(r'(\(-?\d+\.\d+%\))', r'<span style="color: #ff4b4b; font-weight: bold;">\1</span>', html_table)
             
-            # 2. 특정 행(QLD, USD, Target 1x, Target 2x) 볼드체 및 배경색 강조
-            # <tr> 태그를 찾아 해당 자산명이 포함되어 있으면 스타일을 삽입합니다.
+            # 핵심 항목 강조 (QLD, USD, Target 1x, Target 2x)
             highlight_targets = ["QLD (BM)", "USD (BM)", f"{target_ticker} (1x)", f"{target_ticker} (2x Sim)"]
-            
             for target in highlight_targets:
-                # 해당 텍스트가 들어있는 행(tr)을 찾아 스타일 적용
                 pattern = rf'<tr>\s*<td>{re.escape(target)}</td>'
                 replacement = f'<tr style="background-color: #fafff0; font-weight: bold; border: 2px solid #d4edda;"><td>{target}</td>'
                 html_table = re.sub(pattern, replacement, html_table)
 
-            # CSS 스타일 정의
+            # CSS 및 테이블 출력
             st.markdown(
                 """
                 <style>
-                table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
-                th { background-color: #f0
+                .custom-table table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
+                .custom-table th { background-color: #f0f2f6; color: #31333F; text-align: center; padding: 12px; border: 1px solid #dee2e6; }
+                .custom-table td { text-align: center; padding: 12px; border: 1px solid #dee2e6; }
+                </style>
+                <div class="custom-table">
+                """ + html_table + "</div>", 
+                unsafe_allow_html=True
+            )
+            
+            st.info(f"💡 강조 항목: QLD, USD, {target_ticker} (괄호 안 빨간색 수치는 MDD입니다)")
+
+    except Exception as e:
+        st.error(f"오류 발생: {e}")
