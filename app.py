@@ -72,47 +72,46 @@ if target_ticker:
             
             df = pd.DataFrame(results)
             
-            # HTML 테이블 생성
-            html_table = df.to_html(escape=False, index=False)
+            # HTML 생성 및 텍스트 후처리
+            html_table = df.to_html(index=False)
             
-            # 1. MDD 빨간색 및 굵게
+            # 1. MDD 빨간색 강조
             html_table = re.sub(r'(\(-?\d+\.\d+%\))', r'<span style="color: #ff4b4b; font-weight: bold;">\1</span>', html_table)
             
             # 2. 강조 항목 스타일 적용 (QLD, USD, Target 1x, 2x)
             highlight_targets = ["QLD (BM)", "USD (BM)", f"{target_ticker} (1x)", f"{target_ticker} (2x Sim)"]
             for target in highlight_targets:
-                pattern = rf'<td>{re.escape(target)}</td>'
-                # 행 전체에 스타일을 주기 위해 tr 태그에 직접 스타일 삽입
+                # <tr> 태그 바로 뒤에 스타일 삽입 (가장 원시적이지만 확실한 방법)
+                html_table = html_table.replace(f'<tr>\n      <td>{target}</td>', f'<tr style="background-color: #fafff0; font-weight: bold;">\n      <td>{target}</td>')
+                # 혹시 모를 공백 차이 대응
                 html_table = html_table.replace(f'<tr><td>{target}</td>', f'<tr style="background-color: #fafff0; font-weight: bold;"><td>{target}</td>')
 
-            # 스타일 시트와 테이블을 하나의 f-string으로 결합
-            full_html = f"""
+            # 스타일 정의
+            style = """
             <style>
-                .custom-container table {{
+                table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-family: 'Malgun Gothic', sans-serif;
-                    border: 1px solid #dee2e6;
-                }}
-                .custom-container th {{
+                    margin: 10px 0;
+                    font-size: 15px;
+                    text-align: center;
+                }
+                th {
                     background-color: #f0f2f6;
                     padding: 12px;
                     border: 1px solid #dee2e6;
-                    text-align: center;
-                }}
-                .custom-container td {{
+                }
+                td {
                     padding: 12px;
                     border: 1px solid #dee2e6;
-                    text-align: center;
-                }}
+                }
             </style>
-            <div class="custom-container">
-                {html_table}
-            </div>
             """
             
             st.subheader(f"📊 {target_ticker} vs 벤치마크 성과 비교")
-            st.markdown(full_html, unsafe_allow_html=True)
+            # 스타일과 테이블을 분리하여 렌더링
+            st.markdown(style, unsafe_allow_html=True)
+            st.markdown(html_table, unsafe_allow_html=True)
             st.info(f"💡 강조 항목: QLD, USD, {target_ticker} (괄호 안 빨간색은 MDD)")
 
     except Exception as e:
