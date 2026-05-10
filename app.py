@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 import datetime
 import numpy as np
+import re
 
 # 페이지 설정
 st.set_page_config(page_title="Leverage Visualizer", layout="wide")
@@ -24,7 +25,7 @@ def get_metrics(ticker_symbol, years, leverage=1):
     
     data = yf.download(ticker_symbol, start=start_date, end=end_date, progress=False)
     
-    if data.empty or len(data) < (years * 200): # 상장 기간이 분석 기간보다 짧으면 제외
+    if data.empty or len(data) < (years * 200):
         return None, None
     
     if isinstance(data.columns, pd.MultiIndex):
@@ -55,8 +56,10 @@ if target_ticker:
             results = []
             periods = [1, 3, 5, 10]
             
+            # 분석 대상 구성
             tickers_to_analyze = []
-            for t in benchmarks.keys(): tickers_to_analyze.append((t, 1, f"{t} (BM)"))
+            for t in benchmarks.keys(): 
+                tickers_to_analyze.append((t, 1, f"{t} (BM)"))
             tickers_to_analyze.append((target_ticker, 1, f"{target_ticker} (1x)"))
             tickers_to_analyze.append((target_ticker, 2, f"{target_ticker} (2x Sim)"))
 
@@ -65,7 +68,6 @@ if target_ticker:
                 for yr in periods:
                     cagr, mdd = get_metrics(symbol, yr, leverage=lev)
                     if cagr is not None and not np.isnan(cagr):
-                        # 수익률 옆에 MDD를 괄호로 표기
                         row[f"{yr}Y (MDD)"] = f"{cagr:.1f}% ({mdd:.1f}%)"
                     else:
                         row[f"{yr}Y (MDD)"] = "N/A"
@@ -73,29 +75,27 @@ if target_ticker:
             
             df = pd.DataFrame(results)
             
-            # 스타일링 함수: 괄호 안의 MDD 부분만 빨간색으로 보이게 하는 것은 HTML 렌더링이 필요함
-            # 여기서는 전체 셀의 가독성을 높이기 위해 배경색 스타일링 적용
-            st.subheader(f"📊 {target_ticker} 성과 요약 (수익률 (MDD) 순)")
+            st.subheader(f"📊 {target_ticker} vs 벤치마크 성과 비교")
             
-            # HTML로 변환하여 출력 (색상 적용을 위해)
+            # HTML 변환 및 강조 로직
             html_table = df.to_html(escape=False, index=False)
             
-            # 정규식을 활용해 괄호 안의 숫자(MDD)를 빨간색으로 치환
-            import re
+            # 1. MDD (괄호 안 수치) 빨간색 처리
             html_table = re.sub(r'(\(-?\d+\.\d+%\))', r'<span style="color: #ff4b4b; font-weight: bold;">\1</span>', html_table)
             
+            # 2. 특정 행(QLD, USD, Target 1x, Target 2x) 볼드체 및 배경색 강조
+            # <tr> 태그를 찾아 해당 자산명이 포함되어 있으면 스타일을 삽입합니다.
+            highlight_targets = ["QLD (BM)", "USD (BM)", f"{target_ticker} (1x)", f"{target_ticker} (2x Sim)"]
+            
+            for target in highlight_targets:
+                # 해당 텍스트가 들어있는 행(tr)을 찾아 스타일 적용
+                pattern = rf'<tr>\s*<td>{re.escape(target)}</td>'
+                replacement = f'<tr style="background-color: #fafff0; font-weight: bold; border: 2px solid #d4edda;"><td>{target}</td>'
+                html_table = re.sub(pattern, replacement, html_table)
+
+            # CSS 스타일 정의
             st.markdown(
                 """
                 <style>
-                table { width: 100%; border-collapse: collapse; }
-                th { background-color: #f0f2f6; text-align: center; padding: 10px; }
-                td { text-align: center; padding: 10px; border-bottom: 1px solid #ddd; }
-                </style>
-                """, unsafe_allow_html=True
-            )
-            st.write(html_table, unsafe_allow_html=True)
-            
-            st.info("💡 **가이드**: 연평균 수익률 옆 괄호 안의 **빨간색 수치**는 해당 기간의 최대 낙폭(MDD)입니다.")
-
-    except Exception as e:
-        st.error(f"오류 발생: {e}")
+                table { width: 100%; border-collapse: collapse; font-family: sans-serif; }
+                th { background-color: #f0
