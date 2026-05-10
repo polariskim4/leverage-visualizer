@@ -14,6 +14,8 @@ st.title("📈 레버리지 수익률 및 MDD 분석")
 benchmarks = {
     "QLD": "Nasdaq 100 2x",
     "TQQQ": "Nasdaq 100 3x",
+    "FNGO": "FNGS 2x",  # 추가
+    "FNGU": "FNGS 3x",  # 추가
     "TECL": "Technology 3x",
     "USD": "Semiconductor 2x",
     "SOXL": "Semiconductor 3x"
